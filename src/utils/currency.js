@@ -1,4 +1,5 @@
 export const CURRENCIES = {
+  USD: { symbol: '$', rate: 1, label: 'USD ($)', code: 'USD' },
   INR: { symbol: '₹', rate: 83.5, label: 'INR (₹)', code: 'INR' }
 };
 

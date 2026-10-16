@@ -14,7 +14,7 @@ NovaCommerce is an ultra-premium, interactive modern e-commerce web application 
 ## 🛠️ Tech Stack
 
 - **Framework**: React 19 + Vite
-- **API & Storage**: Node.js + SQLite
+- **Catalog Data**: Static product records bundled with the site
 - **Icons**: Lucide React
 - **Effects**: Canvas Confetti
 - **Styling**: Vanilla CSS Design System with CSS variables and responsive glassmorphism
@@ -26,41 +26,18 @@ npm install
 npm run dev
 ```
 
-This starts:
-
-- the Vite frontend on http://localhost:5173
-- the SQLite API on http://localhost:4000
-
-Health check:
-
-```bash
-curl http://localhost:4000/api/health
-```
+This starts the Vite frontend on http://localhost:5173. The product catalog is served from the repository's static source files.
 
 ## 📦 GitHub Live / GitHub Pages
 
-GitHub Pages only supports static frontend hosting. A SQLite database cannot run directly on GitHub Pages because the platform does not execute a Node.js backend.
+GitHub Pages hosts the static catalog at https://ajinkyaaas.github.io/NOV/. Changes to catalog content require editing `src/data/products.js`, committing, and deploying. GitHub Pages cannot accept site submissions and write them back into the repository; cart, account, and order state are local to each browser.
 
-For static live hosting, you can deploy the built frontend with:
+The app is configured with a relative base path (`./`) for the `/NOV/` project path. Deploy frontend updates with:
 
 ```bash
 npm run build
 npm run deploy
 ```
-
-The app is configured with a relative base path (`./`) so it works as a static Pages site. For persistent data, the SQLite API should run on a host like Render, Railway, or your own VPS instead of GitHub Pages.
-
-## 🗄️ SQLite / firestore firebase
-
-
-The project now includes a local SQLite database in `data/novacommerce.db` and a lightweight API at `server/index.js`.
-
-Available endpoints:
-
-- `GET /api/health`
-- `GET /api/products`
-- `GET /api/orders`
-- `POST /api/orders`
 
 ## 🧪 Production Build
 

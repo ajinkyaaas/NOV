@@ -54,8 +54,6 @@ const INITIAL_DEMO_ORDERS = [
 ];
 
 export const ShopProvider = ({ children }) => {
-  const API_BASE = import.meta.env.DEV ? '/api' : 'http://localhost:4000/api';
-
   // Theme state
   const [theme, setTheme] = useState(() => {
     return localStorage.getItem('nova_theme') || localStorage.getItem('aura_theme') || 'dark';
@@ -95,10 +93,7 @@ export const ShopProvider = ({ children }) => {
   });
 
   // Products with dynamic review support
-  const [products, setProducts] = useState(() => {
-    const saved = localStorage.getItem('nova_products') || localStorage.getItem('aura_products');
-    return saved ? JSON.parse(saved) : INITIAL_PRODUCTS;
-  });
+  const [products, setProducts] = useState(INITIAL_PRODUCTS);
 
   // Cart state
   const [cart, setCart] = useState(() => {
@@ -166,43 +161,6 @@ export const ShopProvider = ({ children }) => {
   useEffect(() => {
     localStorage.setItem('nova_wishlist', JSON.stringify(wishlist));
   }, [wishlist]);
-
-  useEffect(() => {
-    localStorage.setItem('nova_products', JSON.stringify(products));
-  }, [products]);
-
-  useEffect(() => {
-    if (!import.meta.env.DEV) {
-      return;
-    }
-
-    const loadRemoteData = async () => {
-      try {
-        const [productsResponse, ordersResponse] = await Promise.all([
-          fetch(`${API_BASE}/products`),
-          fetch(`${API_BASE}/orders`)
-        ]);
-
-        if (productsResponse.ok) {
-          const remoteProducts = await productsResponse.json();
-          if (Array.isArray(remoteProducts) && remoteProducts.length > 0) {
-            setProducts(remoteProducts);
-          }
-        }
-
-        if (ordersResponse.ok) {
-          const remoteOrders = await ordersResponse.json();
-          if (Array.isArray(remoteOrders) && remoteOrders.length > 0) {
-            setOrders(remoteOrders);
-          }
-        }
-      } catch (error) {
-        console.warn('SQLite backend unavailable, using local demo data:', error.message);
-      }
-    };
-
-    loadRemoteData();
-  }, [API_BASE]);
 
   // Toast manager
   const addToast = (message, type = 'success', duration = 3500) => {
@@ -402,18 +360,20 @@ export const ShopProvider = ({ children }) => {
 
   // Product reviews
   const addProductReview = (productId, review) => {
+    const reviewData = {
+      id: 'rev_' + Date.now(),
+      author: user ? user.name : 'Verified Customer',
+      rating: review.rating,
+      date: 'Just now',
+      title: review.title,
+      comment: review.comment
+    };
+
     setProducts((prev) =>
       prev.map((p) => {
         if (p.id === productId) {
           const updatedReviews = [
-            {
-              id: 'rev_' + Date.now(),
-              author: user ? user.name : 'Verified Customer',
-              rating: review.rating,
-              date: 'Just now',
-              title: review.title,
-              comment: review.comment
-            },
+            reviewData,
             ...(p.reviews || [])
           ];
           const newAvg = (
@@ -464,18 +424,6 @@ export const ShopProvider = ({ children }) => {
     };
 
     setOrders((prev) => [newOrder, ...prev]);
-
-    if (import.meta.env.DEV) {
-      try {
-        await fetch(`${API_BASE}/orders`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(newOrder)
-        });
-      } catch (error) {
-        console.warn('Unable to save order to SQLite backend:', error.message);
-      }
-    }
 
     clearCart();
     setAppliedCoupon(null);

@@ -1,6 +1,4 @@
-import { db } from '../../firebase';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   X,
   Check,
@@ -35,8 +33,6 @@ export const CheckoutModal = () => {
     addToast
   } = useShop();
 
-  if (!isCheckoutOpen) return null;
-
   const [step, setStep] = useState(1); // 1: Shipping, 2: Delivery Method, 3: Payment, 4: Review
 
   // Step 1: Shipping Info
@@ -62,6 +58,8 @@ export const CheckoutModal = () => {
     expiry: '',
     cvv: ''
   });
+
+  if (!isCheckoutOpen) return null;
 
   // Calculate Shipping Method Cost
   const getShippingCost = () => {
@@ -95,57 +93,29 @@ export const CheckoutModal = () => {
     setStep((prev) => Math.max(1, prev - 1));
   };
 
-  // UPDATED: Connected directly to Firestore!
-  const handleCompleteOrder = async () => {
-    try {
-      const formattedShippingMethod =
-        shippingMethod === 'standard'
-          ? 'Standard Tracked Delivery (3-5 Days)'
-          : shippingMethod === 'express'
-          ? 'Express Air Courier (2 Days)'
-          : 'Priority Overnight Air (1 Day)';
+  const handleCompleteOrder = () => {
+    const formattedShippingMethod =
+      shippingMethod === 'standard'
+        ? 'Standard Tracked Delivery (3-5 Days)'
+        : shippingMethod === 'express'
+        ? 'Express Air Courier (2 Days)'
+        : 'Priority Overnight Air (1 Day)';
 
-      const formattedPaymentMethod =
-        paymentType === 'card'
-          ? `Credit Card (•••• ${cardData.number.slice(-4) || '4242'})`
-          : paymentType === 'applepay'
-          ? 'Apple Pay'
-          : paymentType === 'paypal'
-          ? 'PayPal'
-          : 'Cash on Delivery (COD)';
+    const formattedPaymentMethod =
+      paymentType === 'card'
+        ? `Credit Card (•••• ${cardData.number.slice(-4) || '4242'})`
+        : paymentType === 'applepay'
+        ? 'Apple Pay'
+        : paymentType === 'paypal'
+        ? 'PayPal'
+        : 'Cash on Delivery (COD)';
 
-      const generatedOrderId = `NOV-${Math.floor(100000 + Math.random() * 900000)}`;
-
-      // 1. Save order to Firebase Firestore
-      const docRef = await addDoc(collection(db, 'orders'), {
-        orderId: generatedOrderId,
-        items: cart,
-        subtotal: cartSubtotal,
-        discount: cartDiscount,
-        tax: cartTax,
-        shippingCost: currentShippingCost,
-        total: finalTotal,
-        shippingAddress: shippingInfo,
-        shippingMethod: formattedShippingMethod,
-        paymentMethod: formattedPaymentMethod,
-        status: 'PROCESSING',
-        createdAt: serverTimestamp()
-      });
-
-      console.log('Order successfully saved to Firestore with ID:', docRef.id);
-
-      // 2. Clear cart & update state in app context
-      placeOrder({
-        shippingAddress: shippingInfo,
-        shippingMethod: formattedShippingMethod,
-        shippingCost: currentShippingCost,
-        paymentMethod: formattedPaymentMethod
-      });
-
-    } catch (error) {
-      console.error('Error writing order to Firestore:', error);
-      addToast('Error placing order to database. Please check your connection.', 'error');
-    }
+    placeOrder({
+      shippingAddress: shippingInfo,
+      shippingMethod: formattedShippingMethod,
+      shippingCost: currentShippingCost,
+      paymentMethod: formattedPaymentMethod
+    });
   };
 
   return (
@@ -586,18 +556,21 @@ export const CheckoutModal = () => {
             <h4 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '1rem' }}>Order Summary ({cart.length})</h4>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem', maxHeight: '200px', overflowY: 'auto', marginBottom: '1.25rem' }}>
-              {cart.map((item) => (
-                <div key={item.id} style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
-                  <img src={item.image} alt={item.name} style={{ width: '42px', height: '42px', borderRadius: 'var(--radius-sm)', objectFit: 'cover' }} />
+              {cart.map((item) => {
+                const product = item.product || item;
+                return (
+                <div key={`${product.id}-${item.selectedColor?.name || 'standard'}`} style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+                  <img src={item.selectedColor?.image || product.image} alt={product.name} style={{ width: '42px', height: '42px', borderRadius: 'var(--radius-sm)', objectFit: 'cover' }} />
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: '0.82rem', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {item.name}
+                      {product.name}
                     </div>
                     <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Qty: {item.quantity}</div>
                   </div>
-                  <div style={{ fontSize: '0.85rem', fontWeight: 700 }}>{formatPrice(item.price * item.quantity, currency)}</div>
+                  <div style={{ fontSize: '0.85rem', fontWeight: 700 }}>{formatPrice(product.price * item.quantity, currency)}</div>
                 </div>
-              ))}
+                );
+              })}
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', borderTop: '1px solid var(--border-subtle)', paddingTop: '1rem' }}>

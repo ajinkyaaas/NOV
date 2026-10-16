@@ -53,18 +53,20 @@ export const QuickViewModal = () => {
     if (color.image) setSelectedImage(color.image);
   };
 
-  const handleReviewSubmit = (e) => {
+  const handleReviewSubmit = async (e) => {
     e.preventDefault();
     if (!newTitle.trim() || !newComment.trim()) return;
 
-    addProductReview(quickViewProduct.id, {
+    const saved = await addProductReview(quickViewProduct.id, {
       rating: newRating,
       title: newTitle,
       comment: newComment
     });
 
-    setNewTitle('');
-    setNewComment('');
+    if (saved) {
+      setNewTitle('');
+      setNewComment('');
+    }
   };
 
   return (

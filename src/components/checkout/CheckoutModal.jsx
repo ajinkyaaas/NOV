@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
 import {
   X,
   Check,
@@ -14,6 +15,7 @@ import {
   ShoppingBag
 } from 'lucide-react';
 import { useShop } from '../../context/ShopContext';
+import { db } from '../../firebase';
 import { formatPrice } from '../../utils/currency';
 import { CreditCardPreview } from './CreditCardPreview';
 
@@ -93,7 +95,7 @@ export const CheckoutModal = () => {
     setStep((prev) => Math.max(1, prev - 1));
   };
 
-  const handleCompleteOrder = () => {
+  const handleCompleteOrder = async () => {
     const formattedShippingMethod =
       shippingMethod === 'standard'
         ? 'Standard Tracked Delivery (3-5 Days)'
@@ -110,12 +112,36 @@ export const CheckoutModal = () => {
         ? 'PayPal'
         : 'Cash on Delivery (COD)';
 
-    placeOrder({
-      shippingAddress: shippingInfo,
-      shippingMethod: formattedShippingMethod,
-      shippingCost: currentShippingCost,
-      paymentMethod: formattedPaymentMethod
-    });
+    const orderId = `NOV-${Math.floor(100000 + Math.random() * 900000)}`;
+
+    try {
+      await addDoc(collection(db, 'orders'), {
+        orderId,
+        customerId: user?.id || null,
+        items: cart,
+        subtotal: cartSubtotal,
+        discount: cartDiscount,
+        tax: cartTax,
+        shippingCost: currentShippingCost,
+        total: finalTotal,
+        shippingAddress: shippingInfo,
+        shippingMethod: formattedShippingMethod,
+        paymentMethod: formattedPaymentMethod,
+        status: 'PROCESSING',
+        createdAt: serverTimestamp()
+      });
+
+      await placeOrder({
+        orderId,
+        shippingAddress: shippingInfo,
+        shippingMethod: formattedShippingMethod,
+        shippingCost: currentShippingCost,
+        paymentMethod: formattedPaymentMethod
+      });
+    } catch (error) {
+      console.error('Error writing order to Firestore:', error);
+      addToast('Order could not be saved. Please check your connection and try again.', 'error');
+    }
   };
 
   return (

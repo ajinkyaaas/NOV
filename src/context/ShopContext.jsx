@@ -1,6 +1,8 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { PRODUCTS as INITIAL_PRODUCTS } from '../data/products';
 import { describeCoupon, VALID_COUPONS } from '../data/coupons';
+import { addDoc, collection, getDocs, serverTimestamp } from 'firebase/firestore';
+import { db } from '../firebase';
 import confetti from 'canvas-confetti';
 import { formatPrice } from '../utils/currency';
 
@@ -161,6 +163,42 @@ export const ShopProvider = ({ children }) => {
   useEffect(() => {
     localStorage.setItem('nova_wishlist', JSON.stringify(wishlist));
   }, [wishlist]);
+
+  useEffect(() => {
+    const loadFirestoreCatalog = async () => {
+      try {
+        const [productSnapshot, reviewSnapshot] = await Promise.all([
+          getDocs(collection(db, 'products')),
+          getDocs(collection(db, 'reviews'))
+        ]);
+
+        if (productSnapshot.empty) return;
+
+        const reviewsByProduct = new Map();
+        reviewSnapshot.docs.forEach((reviewDoc) => {
+          const review = { ...reviewDoc.data(), id: reviewDoc.id };
+          const productReviews = reviewsByProduct.get(review.productId) || [];
+          productReviews.push(review);
+          reviewsByProduct.set(review.productId, productReviews);
+        });
+
+        setProducts(productSnapshot.docs.map((productDoc) => {
+          const product = { ...productDoc.data(), id: productDoc.id };
+          return {
+            ...product,
+            reviews: [
+              ...(reviewsByProduct.get(product.id) || []),
+              ...(product.reviews || [])
+            ]
+          };
+        }));
+      } catch (error) {
+        console.warn('Firestore unavailable, using bundled catalog data:', error.message);
+      }
+    };
+
+    loadFirestoreCatalog();
+  }, []);
 
   // Toast manager
   const addToast = (message, type = 'success', duration = 3500) => {
@@ -359,15 +397,28 @@ export const ShopProvider = ({ children }) => {
   };
 
   // Product reviews
-  const addProductReview = (productId, review) => {
-    const reviewData = {
-      id: 'rev_' + Date.now(),
+  const addProductReview = async (productId, review) => {
+    const reviewPayload = {
+      productId,
       author: user ? user.name : 'Verified Customer',
       rating: review.rating,
       date: 'Just now',
       title: review.title,
-      comment: review.comment
+      comment: review.comment,
+      createdAt: serverTimestamp()
     };
+
+    let reviewId;
+    try {
+      const reviewRef = await addDoc(collection(db, 'reviews'), reviewPayload);
+      reviewId = reviewRef.id;
+    } catch (error) {
+      console.error('Error writing review to Firestore:', error);
+      addToast('Review could not be saved. Please try again.', 'error');
+      return false;
+    }
+
+    const reviewData = { ...reviewPayload, id: reviewId };
 
     setProducts((prev) =>
       prev.map((p) => {
@@ -391,11 +442,12 @@ export const ShopProvider = ({ children }) => {
       })
     );
     addToast('Thank you! Your review has been submitted.', 'success');
+    return true;
   };
 
   // Order Placement
   const placeOrder = async (orderInfo) => {
-    const orderId = 'NOV-' + Math.floor(100000 + Math.random() * 900000);
+    const orderId = orderInfo.orderId || 'NOV-' + Math.floor(100000 + Math.random() * 900000);
     const trackingNo = 'TRK-' + Math.floor(100000000 + Math.random() * 900000000) + 'US';
 
     const newOrder = {

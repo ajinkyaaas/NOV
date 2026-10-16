@@ -14,7 +14,7 @@ NovaCommerce is an ultra-premium, interactive modern e-commerce web application 
 ## 🛠️ Tech Stack
 
 - **Framework**: React 19 + Vite
-- **Catalog Data**: Static product records bundled with the site
+- **Data Storage**: Firebase Firestore
 - **Icons**: Lucide React
 - **Effects**: Canvas Confetti
 - **Styling**: Vanilla CSS Design System with CSS variables and responsive glassmorphism
@@ -26,11 +26,56 @@ npm install
 npm run dev
 ```
 
-This starts the Vite frontend on http://localhost:5173. The product catalog is served from the repository's static source files.
+This starts the Vite frontend on http://localhost:5173. The app loads its catalog and reviews from Firestore, with the bundled catalog as a fallback.
+
+## 🔥 Firestore Setup
+
+The app reads products from `products`, reads and writes reviews in `reviews`, and writes checkout orders to `orders`. Firebase web configuration is in `src/firebase.js`; it is a public client identifier, not an admin credential. Protect Firestore with rules.
+
+To upload the bundled catalog, create a Firebase service-account key and save it outside this repository. Never commit or share this private key. In PowerShell, set its path and run the importer:
+
+```powershell
+$env:GOOGLE_APPLICATION_CREDENTIALS = 'C:\path\outside\repository\firebase-service-account.json'
+npm run seed:firestore
+```
+
+The importer writes each item from `src/data/products.js` to `products` using its existing product ID. The Admin SDK bypasses Firestore rules and is only used by this local import script.
+
+Example rules for public catalog/review reads and restricted creates; review and order reads remain disabled because this demo does not have real Firebase Authentication:
+
+```text
+rules_version = '2';
+service cloud.firestore {
+	match /databases/{database}/documents {
+		match /products/{productId} {
+			allow read: if true;
+			allow write: if false;
+		}
+		match /reviews/{reviewId} {
+			allow read: if true;
+			allow create: if request.resource.data.productId is string
+				&& request.resource.data.rating is number
+				&& request.resource.data.rating >= 1
+				&& request.resource.data.rating <= 5
+				&& request.resource.data.title is string
+				&& request.resource.data.comment is string;
+			allow update, delete: if false;
+		}
+		match /orders/{orderId} {
+			allow create: if request.resource.data.orderId is string
+				&& request.resource.data.shippingAddress is map
+				&& request.resource.data.total is number;
+			allow read, update, delete: if false;
+		}
+	}
+}
+```
+
+Checkout stores shipping details and order contents in Firestore. Add Firebase Authentication and ownership-based rules before using this for real customer accounts or order history.
 
 ## 📦 GitHub Live / GitHub Pages
 
-GitHub Pages hosts the static catalog at https://ajinkyaaas.github.io/NOV/. Changes to catalog content require editing `src/data/products.js`, committing, and deploying. GitHub Pages cannot accept site submissions and write them back into the repository; cart, account, and order state are local to each browser.
+GitHub Pages hosts the frontend at https://ajinkyaaas.github.io/NOV/. Firestore stores shared catalog, reviews, and orders independently of GitHub Pages. Cart and account demo state remain local to each browser.
 
 The app is configured with a relative base path (`./`) for the `/NOV/` project path. Deploy frontend updates with:
 

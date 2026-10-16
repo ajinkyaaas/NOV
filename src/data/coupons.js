@@ -1,3 +1,5 @@
+import { formatPrice } from '../utils/currency';
+
 export const VALID_COUPONS = [
   {
     code: 'WELCOME20',
@@ -11,14 +13,14 @@ export const VALID_COUPONS = [
     type: 'fixed',
     value: 50,
     minSpend: 250,
-    description: '$50 off orders over $250'
+    description: 'Discount on orders over the minimum spend'
   },
   {
     code: 'AURA50',
     type: 'fixed',
     value: 50,
     minSpend: 250,
-    description: '$50 off orders over $250'
+    description: 'Discount on orders over the minimum spend'
   },
   {
     code: 'FREESHIP',
@@ -35,3 +37,10 @@ export const VALID_COUPONS = [
     description: '30% VIP Exclusive discount'
   }
 ];
+
+export const describeCoupon = (coupon, currency) => {
+  if (coupon.type === 'fixed') {
+    return `${formatPrice(coupon.value, currency)} off orders over ${formatPrice(coupon.minSpend, currency)}`;
+  }
+  return coupon.description;
+};

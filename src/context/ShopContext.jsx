@@ -1,7 +1,8 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { PRODUCTS as INITIAL_PRODUCTS } from '../data/products';
-import { VALID_COUPONS } from '../data/coupons';
+import { describeCoupon, VALID_COUPONS } from '../data/coupons';
 import confetti from 'canvas-confetti';
+import { formatPrice } from '../utils/currency';
 
 const ShopContext = createContext();
 
@@ -53,6 +54,8 @@ const INITIAL_DEMO_ORDERS = [
 ];
 
 export const ShopProvider = ({ children }) => {
+  const API_BASE = import.meta.env.DEV ? '/api' : 'http://localhost:4000/api';
+
   // Theme state
   const [theme, setTheme] = useState(() => {
     return localStorage.getItem('nova_theme') || localStorage.getItem('aura_theme') || 'dark';
@@ -60,7 +63,12 @@ export const ShopProvider = ({ children }) => {
 
   // Currency state
   const [currency, setCurrency] = useState(() => {
-    return localStorage.getItem('nova_currency') || localStorage.getItem('aura_currency') || 'USD';
+    if (localStorage.getItem('nova_currency_inr_migration') !== 'complete') {
+      localStorage.setItem('nova_currency_inr_migration', 'complete');
+      localStorage.setItem('nova_currency', 'INR');
+      return 'INR';
+    }
+    return localStorage.getItem('nova_currency') || 'INR';
   });
 
   // Auth & User State
@@ -162,6 +170,39 @@ export const ShopProvider = ({ children }) => {
   useEffect(() => {
     localStorage.setItem('nova_products', JSON.stringify(products));
   }, [products]);
+
+  useEffect(() => {
+    if (!import.meta.env.DEV) {
+      return;
+    }
+
+    const loadRemoteData = async () => {
+      try {
+        const [productsResponse, ordersResponse] = await Promise.all([
+          fetch(`${API_BASE}/products`),
+          fetch(`${API_BASE}/orders`)
+        ]);
+
+        if (productsResponse.ok) {
+          const remoteProducts = await productsResponse.json();
+          if (Array.isArray(remoteProducts) && remoteProducts.length > 0) {
+            setProducts(remoteProducts);
+          }
+        }
+
+        if (ordersResponse.ok) {
+          const remoteOrders = await ordersResponse.json();
+          if (Array.isArray(remoteOrders) && remoteOrders.length > 0) {
+            setOrders(remoteOrders);
+          }
+        }
+      } catch (error) {
+        console.warn('SQLite backend unavailable, using local demo data:', error.message);
+      }
+    };
+
+    loadRemoteData();
+  }, [API_BASE]);
 
   // Toast manager
   const addToast = (message, type = 'success', duration = 3500) => {
@@ -345,12 +386,12 @@ export const ShopProvider = ({ children }) => {
     }
 
     if (found.minSpend && cartSubtotal < found.minSpend) {
-      addToast(`Minimum spend of $${found.minSpend} required for this coupon.`, 'warning');
+      addToast(`Minimum spend of ${formatPrice(found.minSpend, currency)} required for this coupon.`, 'warning');
       return false;
     }
 
     setAppliedCoupon(found);
-    addToast(`Coupon "${found.code}" applied! ${found.description}`, 'success');
+    addToast(`Coupon "${found.code}" applied! ${describeCoupon(found, currency)}`, 'success');
     return true;
   };
 
@@ -393,7 +434,7 @@ export const ShopProvider = ({ children }) => {
   };
 
   // Order Placement
-  const placeOrder = (orderInfo) => {
+  const placeOrder = async (orderInfo) => {
     const orderId = 'NOV-' + Math.floor(100000 + Math.random() * 900000);
     const trackingNo = 'TRK-' + Math.floor(100000000 + Math.random() * 900000000) + 'US';
 
@@ -423,6 +464,19 @@ export const ShopProvider = ({ children }) => {
     };
 
     setOrders((prev) => [newOrder, ...prev]);
+
+    if (import.meta.env.DEV) {
+      try {
+        await fetch(`${API_BASE}/orders`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(newOrder)
+        });
+      } catch (error) {
+        console.warn('Unable to save order to SQLite backend:', error.message);
+      }
+    }
+
     clearCart();
     setAppliedCoupon(null);
     setIsCheckoutOpen(false);

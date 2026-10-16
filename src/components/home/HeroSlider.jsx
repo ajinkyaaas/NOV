@@ -71,6 +71,7 @@ export const HeroSlider = ({ onExploreClick }) => {
     <section style={{ position: 'relative', overflow: 'hidden', padding: '3.5rem 0 4.5rem 0', background: 'radial-gradient(ellipse at 50% 20%, rgba(99, 102, 241, 0.15), transparent 70%)' }}>
       <div className="container">
         <div
+          className="hero-card"
           style={{
             position: 'relative',
             background: 'var(--bg-card)',
@@ -102,7 +103,7 @@ export const HeroSlider = ({ onExploreClick }) => {
             }}
           />
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', alignItems: 'center', gap: '2.5rem', padding: '3rem 2.5rem', position: 'relative', zIndex: 2 }}>
+          <div className="hero-content-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', alignItems: 'center', gap: '2.5rem', padding: '3rem 2.5rem', position: 'relative', zIndex: 2 }}>
             {/* Left Content Column */}
             <div>
               <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', marginBottom: '1.2rem' }}>
@@ -181,7 +182,7 @@ export const HeroSlider = ({ onExploreClick }) => {
             </div>
 
             {/* Right Visual Image Column */}
-            <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <div className="hero-image-column" style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <div
                 style={{
                   position: 'relative',

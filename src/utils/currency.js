@@ -1,10 +1,10 @@
 export const CURRENCIES = {
-  USD: { symbol: '$', rate: 1, label: 'USD ($)', code: 'USD' },
-  INR: { symbol: '₹', rate: 83.5, label: 'INR (₹)', code: 'INR' }
+  INR: { symbol: '₹', rate: 83.5, label: 'INR (₹)', code: 'INR' },
+  USD: { symbol: '$', rate: 1, label: 'USD ($)', code: 'USD' }
 };
 
-export const formatPrice = (amountInUSD, currency = 'USD') => {
-  const curr = CURRENCIES[currency] || CURRENCIES.USD;
+export const formatPrice = (amountInUSD, currency = 'INR') => {
+  const curr = CURRENCIES[currency] || CURRENCIES.INR;
   const converted = amountInUSD * curr.rate;
   if (currency === 'INR') {
     return `${curr.symbol}${Math.round(converted).toLocaleString('en-IN')}`;

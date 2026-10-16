@@ -1,12 +1,15 @@
 import React from 'react';
 import { Truck, RotateCcw, Headphones, ShieldCheck } from 'lucide-react';
+import { useShop } from '../../context/ShopContext';
+import { formatPrice } from '../../utils/currency';
 
 export const BenefitsBar = () => {
+  const { currency } = useShop();
   const benefits = [
     {
       icon: Truck,
       title: 'Free Express Global Delivery',
-      description: 'On all orders above $150 with tracked air courier'
+      description: `On all orders above ${formatPrice(150, currency)} with tracked air courier`
     },
     {
       icon: RotateCcw,

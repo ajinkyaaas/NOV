@@ -103,7 +103,7 @@ export const Navbar = ({ onSearchChange, searchQuery, onSelectCategory, activeCa
         transition: 'all 0.3s ease'
       }}
     >
-      <div className="container" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: '74px', gap: '1.25rem' }}>
+      <div className="container navbar-container" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: '74px', gap: '1.25rem' }}>
         {/* Brand Logo */}
         <a
           href="#"
@@ -112,6 +112,7 @@ export const Navbar = ({ onSearchChange, searchQuery, onSelectCategory, activeCa
             if (onSelectCategory) onSelectCategory('all');
             window.scrollTo({ top: 0, behavior: 'smooth' });
           }}
+          className="navbar-brand"
           style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', textDecoration: 'none' }}
         >
           <div
@@ -131,6 +132,7 @@ export const Navbar = ({ onSearchChange, searchQuery, onSelectCategory, activeCa
           </div>
           <div style={{ display: 'flex', alignItems: 'baseline' }}>
             <span
+              className="navbar-brand-text"
               style={{
                 fontFamily: 'var(--font-display)',
                 fontSize: '1.45rem',
@@ -144,6 +146,7 @@ export const Navbar = ({ onSearchChange, searchQuery, onSelectCategory, activeCa
               NOVA
             </span>
             <span
+              className="navbar-brand-text"
               style={{
                 fontFamily: 'var(--font-display)',
                 fontSize: '1.45rem',
@@ -311,9 +314,9 @@ export const Navbar = ({ onSearchChange, searchQuery, onSelectCategory, activeCa
         </div>
 
         {/* Right Action Icons & Auth Controls */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+        <div className="navbar-actions" style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
           {/* Currency Switcher */}
-          <div ref={currencyMenuRef} style={{ position: 'relative' }}>
+          <div ref={currencyMenuRef} className="navbar-currency" style={{ position: 'relative' }}>
             <button
               onClick={() => setIsCurrencyMenuOpen(!isCurrencyMenuOpen)}
               className="btn-icon"
@@ -372,6 +375,7 @@ export const Navbar = ({ onSearchChange, searchQuery, onSelectCategory, activeCa
           <button
             onClick={toggleTheme}
             className="btn-icon"
+            data-navbar-action="theme"
             style={{ width: '38px', height: '38px' }}
             title={`Switch to ${theme === 'dark' ? 'Light' : 'Dark'} Mode`}
           >
@@ -382,6 +386,7 @@ export const Navbar = ({ onSearchChange, searchQuery, onSelectCategory, activeCa
           <button
             onClick={openWishlist}
             className="btn-icon"
+            data-navbar-action="wishlist"
             style={{ width: '38px', height: '38px', position: 'relative' }}
             title="Wishlist"
           >
@@ -444,7 +449,7 @@ export const Navbar = ({ onSearchChange, searchQuery, onSelectCategory, activeCa
 
           {/* Authentication & User Profile */}
           {user ? (
-            <div ref={userMenuRef} style={{ position: 'relative' }}>
+            <div ref={userMenuRef} className="navbar-auth" style={{ position: 'relative' }}>
               <button
                 onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
                 style={{
@@ -605,6 +610,7 @@ export const Navbar = ({ onSearchChange, searchQuery, onSelectCategory, activeCa
             <button
               onClick={() => openAuthModal('register')}
               className="btn btn-primary"
+              data-navbar-action="auth"
               style={{
                 padding: '0.45rem 1.05rem',
                 fontSize: '0.85rem',
@@ -664,6 +670,35 @@ export const Navbar = ({ onSearchChange, searchQuery, onSelectCategory, activeCa
               onChange={(e) => onSearchChange(e.target.value)}
               style={{ width: '100%', background: 'transparent', border: 'none', color: 'var(--text-primary)', fontSize: '0.9rem' }}
             />
+          </div>
+
+          <div className="mobile-utility-controls">
+            <label className="mobile-currency-control">
+              <span>Currency</span>
+              <select value={currency} onChange={(e) => setCurrency(e.target.value)} aria-label="Currency">
+                {Object.keys(CURRENCIES).map((currCode) => (
+                  <option key={currCode} value={currCode}>{currCode}</option>
+                ))}
+              </select>
+            </label>
+            <button
+              type="button"
+              className="btn-icon"
+              onClick={toggleTheme}
+              aria-label={`Switch to ${theme === 'dark' ? 'Light' : 'Dark'} Mode`}
+              title={`Switch to ${theme === 'dark' ? 'Light' : 'Dark'} Mode`}
+            >
+              {theme === 'dark' ? <Sun size={17} /> : <Moon size={17} />}
+            </button>
+            <button
+              type="button"
+              className="btn-icon"
+              onClick={openWishlist}
+              aria-label={`Wishlist${wishlist.length ? `, ${wishlist.length} items` : ''}`}
+              title="Wishlist"
+            >
+              <Heart size={17} />
+            </button>
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.5rem' }}>

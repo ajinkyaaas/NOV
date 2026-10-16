@@ -395,7 +395,7 @@ export const QuickViewModal = () => {
                     <Truck size={18} style={{ color: 'var(--accent-primary)', flexShrink: 0, marginTop: '2px' }} />
                     <div>
                       <strong>Free Worldwide Express Delivery</strong>
-                      <p style={{ color: 'var(--text-secondary)', margin: 0 }}>Orders over $150 qualify for 2-3 business day air shipping with live GPS tracking.</p>
+                      <p style={{ color: 'var(--text-secondary)', margin: 0 }}>Orders over {formatPrice(150, currency)} qualify for 2-3 business day air shipping with live GPS tracking.</p>
                     </div>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.65rem' }}>

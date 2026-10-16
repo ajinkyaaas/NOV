@@ -1,3 +1,5 @@
+import { db } from '../../firebase';
+import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import React, { useState, useEffect } from 'react';
 import {
   X,
@@ -93,25 +95,57 @@ export const CheckoutModal = () => {
     setStep((prev) => Math.max(1, prev - 1));
   };
 
-  const handleCompleteOrder = () => {
-    placeOrder({
-      shippingAddress: shippingInfo,
-      shippingMethod:
+  // UPDATED: Connected directly to Firestore!
+  const handleCompleteOrder = async () => {
+    try {
+      const formattedShippingMethod =
         shippingMethod === 'standard'
           ? 'Standard Tracked Delivery (3-5 Days)'
           : shippingMethod === 'express'
           ? 'Express Air Courier (2 Days)'
-          : 'Priority Overnight Air (1 Day)',
-      shippingCost: currentShippingCost,
-      paymentMethod:
+          : 'Priority Overnight Air (1 Day)';
+
+      const formattedPaymentMethod =
         paymentType === 'card'
           ? `Credit Card (•••• ${cardData.number.slice(-4) || '4242'})`
           : paymentType === 'applepay'
           ? 'Apple Pay'
           : paymentType === 'paypal'
           ? 'PayPal'
-          : 'Cash on Delivery (COD)'
-    });
+          : 'Cash on Delivery (COD)';
+
+      const generatedOrderId = `NOV-${Math.floor(100000 + Math.random() * 900000)}`;
+
+      // 1. Save order to Firebase Firestore
+      const docRef = await addDoc(collection(db, 'orders'), {
+        orderId: generatedOrderId,
+        items: cart,
+        subtotal: cartSubtotal,
+        discount: cartDiscount,
+        tax: cartTax,
+        shippingCost: currentShippingCost,
+        total: finalTotal,
+        shippingAddress: shippingInfo,
+        shippingMethod: formattedShippingMethod,
+        paymentMethod: formattedPaymentMethod,
+        status: 'PROCESSING',
+        createdAt: serverTimestamp()
+      });
+
+      console.log('Order successfully saved to Firestore with ID:', docRef.id);
+
+      // 2. Clear cart & update state in app context
+      placeOrder({
+        shippingAddress: shippingInfo,
+        shippingMethod: formattedShippingMethod,
+        shippingCost: currentShippingCost,
+        paymentMethod: formattedPaymentMethod
+      });
+
+    } catch (error) {
+      console.error('Error writing order to Firestore:', error);
+      addToast('Error placing order to database. Please check your connection.', 'error');
+    }
   };
 
   return (
@@ -385,12 +419,11 @@ export const CheckoutModal = () => {
               </div>
             )}
 
-            {/* Step 3: Payment Method & 3D Interactive Card Preview */}
+            {/* Step 3: Payment Method */}
             {step === 3 && (
               <div>
                 <h3 style={{ fontSize: '1.2rem', marginBottom: '1.25rem' }}>Select Payment Method</h3>
 
-                {/* Payment Option Pills */}
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0.5rem', marginBottom: '1.5rem' }}>
                   {[
                     { id: 'card', label: 'Credit Card', icon: CreditCard },
@@ -427,7 +460,6 @@ export const CheckoutModal = () => {
                   })}
                 </div>
 
-                {/* Credit Card Form & 3D Preview */}
                 {paymentType === 'card' && (
                   <div>
                     <CreditCardPreview
@@ -479,7 +511,7 @@ export const CheckoutModal = () => {
                         />
                       </div>
                       <div className="form-group">
-                        <label className="form-label">CVV / CVC</label>
+                        <label className="form-label">CVV Code</label>
                         <input
                           type="password"
                           maxLength={4}
@@ -491,30 +523,6 @@ export const CheckoutModal = () => {
                         />
                       </div>
                     </div>
-                  </div>
-                )}
-
-                {paymentType === 'applepay' && (
-                  <div style={{ padding: '2rem', textAlign: 'center', background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-md)' }}>
-                    <p style={{ color: 'var(--text-secondary)', fontSize: '0.92rem' }}>
-                      You will authenticate with Face ID / Touch ID on your Apple device upon confirmation.
-                    </p>
-                  </div>
-                )}
-
-                {paymentType === 'paypal' && (
-                  <div style={{ padding: '2rem', textAlign: 'center', background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-md)' }}>
-                    <p style={{ color: 'var(--text-secondary)', fontSize: '0.92rem' }}>
-                      You will be seamlessly connected to PayPal for 1-click encrypted verification.
-                    </p>
-                  </div>
-                )}
-
-                {paymentType === 'cod' && (
-                  <div style={{ padding: '2rem', textAlign: 'center', background: 'var(--bg-tertiary)', borderRadius: 'var(--radius-md)' }}>
-                    <p style={{ color: 'var(--text-secondary)', fontSize: '0.92rem' }}>
-                      Pay with Cash or Card upon delivery to your doorstep.
-                    </p>
                   </div>
                 )}
 
@@ -531,37 +539,30 @@ export const CheckoutModal = () => {
               </div>
             )}
 
-            {/* Step 4: Final Review & Confirmation */}
+            {/* Step 4: Final Review */}
             {step === 4 && (
               <div>
-                <h3 style={{ fontSize: '1.2rem', marginBottom: '1.25rem' }}>Final Order Review</h3>
+                <h3 style={{ fontSize: '1.2rem', marginBottom: '1.25rem' }}>Review & Place Order</h3>
 
-                {/* Shipping Summary */}
-                <div style={{ padding: '1rem', background: 'var(--bg-card)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-subtle)', marginBottom: '1rem' }}>
-                  <div style={{ fontSize: '0.78rem', color: 'var(--accent-primary)', fontWeight: 700, textTransform: 'uppercase', marginBottom: '0.35rem' }}>
-                    Deliver To
-                  </div>
-                  <div style={{ fontWeight: 700, fontSize: '0.95rem' }}>{shippingInfo.fullName}</div>
-                  <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-                    {shippingInfo.street}, {shippingInfo.city}, {shippingInfo.state} {shippingInfo.zip}, {shippingInfo.country}
-                  </div>
-                  <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
-                    Email: {shippingInfo.email} • Phone: {shippingInfo.phone || 'N/A'}
-                  </div>
-                </div>
-
-                {/* Shipping & Payment summary */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.5rem' }}>
-                  <div style={{ padding: '0.85rem', background: 'var(--bg-card)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-subtle)' }}>
-                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Delivery Method</div>
-                    <div style={{ fontSize: '0.88rem', fontWeight: 600 }}>
-                      {shippingMethod === 'standard' ? 'Standard (3-5 Days)' : shippingMethod === 'express' ? 'Express Air (2 Days)' : 'Priority Overnight (1 Day)'}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '1.5rem' }}>
+                  <div style={{ padding: '1rem', borderRadius: 'var(--radius-md)', background: 'var(--bg-card)', border: '1px solid var(--border-subtle)' }}>
+                    <div style={{ fontWeight: 700, fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '0.35rem' }}>SHIPPING ADDRESS</div>
+                    <div>{shippingInfo.fullName}</div>
+                    <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                      {shippingInfo.street}, {shippingInfo.city}, {shippingInfo.state} {shippingInfo.zip}, {shippingInfo.country}
                     </div>
                   </div>
-                  <div style={{ padding: '0.85rem', background: 'var(--bg-card)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-subtle)' }}>
-                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Payment Method</div>
-                    <div style={{ fontSize: '0.88rem', fontWeight: 600 }}>
-                      {paymentType === 'card' ? `Credit Card (•••• ${cardData.number.slice(-4) || '4242'})` : paymentType.toUpperCase()}
+
+                  <div style={{ padding: '1rem', borderRadius: 'var(--radius-md)', background: 'var(--bg-card)', border: '1px solid var(--border-subtle)' }}>
+                    <div style={{ fontWeight: 700, fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '0.35rem' }}>PAYMENT & METHOD</div>
+                    <div>
+                      {paymentType === 'card'
+                        ? `Credit Card (•••• ${cardData.number.slice(-4) || '4242'})`
+                        : paymentType === 'applepay'
+                        ? 'Apple Pay'
+                        : paymentType === 'paypal'
+                        ? 'PayPal'
+                        : 'Cash on Delivery (COD)'}
                     </div>
                   </div>
                 </div>
@@ -571,81 +572,67 @@ export const CheckoutModal = () => {
                     <ArrowLeft size={16} />
                     <span>Back</span>
                   </button>
-                  <button onClick={handleCompleteOrder} className="btn btn-accent" style={{ padding: '0.85rem 2rem', fontSize: '1rem' }}>
-                    <Sparkles size={18} />
-                    <span>Authorize & Place Order ({formatPrice(finalTotal, currency)})</span>
+                  <button onClick={handleCompleteOrder} className="btn btn-emerald" style={{ padding: '0.85rem 1.8rem', fontWeight: 800 }}>
+                    <ShieldCheck size={18} />
+                    <span>Place Order & Pay Now</span>
                   </button>
                 </div>
               </div>
             )}
           </div>
 
-          {/* Right Column: Order Items & Breakdown */}
-          <div style={{ padding: '1.5rem', background: 'var(--bg-tertiary)', borderLeft: '1px solid var(--border-subtle)', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-            <div>
-              <h4 style={{ fontSize: '0.95rem', fontWeight: 700, marginBottom: '1rem', color: 'var(--text-primary)' }}>
-                Order Summary ({cart.length})
-              </h4>
+          {/* Right Column: Order Summary Side Panel */}
+          <div style={{ padding: '2rem 1.5rem', background: 'var(--bg-tertiary)', borderLeft: '1px solid var(--border-subtle)' }}>
+            <h4 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '1rem' }}>Order Summary ({cart.length})</h4>
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', maxHeight: '240px', overflowY: 'auto', marginBottom: '1.25rem' }}>
-                {cart.map((item, idx) => (
-                  <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
-                    <img
-                      src={item.selectedColor?.image || item.product.image}
-                      alt={item.product.name}
-                      style={{ width: '42px', height: '42px', borderRadius: '6px', objectFit: 'cover' }}
-                    />
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: '0.82rem', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                        {item.product.name}
-                      </div>
-                      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                        Qty: {item.quantity} • {item.selectedColor?.name || 'Standard'}
-                      </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem', maxHeight: '200px', overflowY: 'auto', marginBottom: '1.25rem' }}>
+              {cart.map((item) => (
+                <div key={item.id} style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+                  <img src={item.image} alt={item.name} style={{ width: '42px', height: '42px', borderRadius: 'var(--radius-sm)', objectFit: 'cover' }} />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: '0.82rem', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {item.name}
                     </div>
-                    <div style={{ fontSize: '0.85rem', fontWeight: 700 }}>
-                      {formatPrice(item.product.price * item.quantity, currency)}
-                    </div>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Qty: {item.quantity}</div>
                   </div>
-                ))}
-              </div>
-
-              {/* Price Breakdown */}
-              <div style={{ borderTop: '1px solid var(--border-subtle)', paddingTop: '0.85rem', display: 'flex', flexDirection: 'column', gap: '0.35rem', fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span>Subtotal</span>
-                  <span style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{formatPrice(cartSubtotal, currency)}</span>
+                  <div style={{ fontSize: '0.85rem', fontWeight: 700 }}>{formatPrice(item.price * item.quantity, currency)}</div>
                 </div>
-
-                {cartDiscount > 0 && (
-                  <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--accent-emerald)' }}>
-                    <span>Discount</span>
-                    <span style={{ fontWeight: 700 }}>-{formatPrice(cartDiscount, currency)}</span>
-                  </div>
-                )}
-
-                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span>Shipping</span>
-                  <span style={{ color: currentShippingCost === 0 ? 'var(--accent-emerald)' : 'var(--text-primary)', fontWeight: 600 }}>
-                    {currentShippingCost === 0 ? 'FREE' : formatPrice(currentShippingCost, currency)}
-                  </span>
-                </div>
-
-                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span>Estimated Tax</span>
-                  <span style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{formatPrice(cartTax, currency)}</span>
-                </div>
-
-                <div style={{ borderTop: '1px solid var(--border-subtle)', paddingTop: '0.5rem', marginTop: '0.2rem', display: 'flex', justifyContent: 'space-between', fontSize: '1.05rem', fontWeight: 800, color: 'var(--text-primary)', fontFamily: 'var(--font-display)' }}>
-                  <span>Total</span>
-                  <span style={{ color: 'var(--accent-primary)' }}>{formatPrice(finalTotal, currency)}</span>
-                </div>
-              </div>
+              ))}
             </div>
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '1rem' }}>
-              <ShieldCheck size={14} style={{ color: 'var(--accent-emerald)' }} />
-              <span>Backed by NovaCommerce 30-Day Money Back Guarantee</span>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', borderTop: '1px solid var(--border-subtle)', paddingTop: '1rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
+                <span style={{ color: 'var(--text-muted)' }}>Subtotal</span>
+                <span>{formatPrice(cartSubtotal, currency)}</span>
+              </div>
+              {cartDiscount > 0 && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', color: 'var(--accent-emerald)' }}>
+                  <span>Discount</span>
+                  <span>-{formatPrice(cartDiscount, currency)}</span>
+                </div>
+              )}
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
+                <span style={{ color: 'var(--text-muted)' }}>Shipping</span>
+                <span>{currentShippingCost === 0 ? 'FREE' : formatPrice(currentShippingCost, currency)}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
+                <span style={{ color: 'var(--text-muted)' }}>Est. Tax</span>
+                <span>{formatPrice(cartTax, currency)}</span>
+              </div>
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  fontSize: '1.1rem',
+                  fontWeight: 800,
+                  borderTop: '1px solid var(--border-subtle)',
+                  paddingTop: '0.75rem',
+                  marginTop: '0.25rem'
+                }}
+              >
+                <span>Total</span>
+                <span style={{ color: 'var(--accent-primary)' }}>{formatPrice(finalTotal, currency)}</span>
+              </div>
             </div>
           </div>
         </div>

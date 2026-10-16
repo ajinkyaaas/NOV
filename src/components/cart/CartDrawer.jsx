@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { useShop } from '../../context/ShopContext';
 import { formatPrice } from '../../utils/currency';
+import { describeCoupon } from '../../data/coupons';
 
 export const CartDrawer = () => {
   const {
@@ -216,7 +217,7 @@ export const CartDrawer = () => {
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.5rem 0.8rem', background: 'rgba(16, 185, 129, 0.12)', border: '1px solid rgba(16, 185, 129, 0.3)', borderRadius: 'var(--radius-md)' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.82rem', color: 'var(--accent-emerald)', fontWeight: 700 }}>
                     <Tag size={14} />
-                    <span>Coupon: {appliedCoupon.code} ({appliedCoupon.description})</span>
+                    <span>Coupon: {appliedCoupon.code} ({describeCoupon(appliedCoupon, currency)})</span>
                   </div>
                   <button
                     onClick={removeCoupon}

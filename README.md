@@ -50,7 +50,8 @@ npm run deploy
 
 The app is configured with a relative base path (`./`) so it works as a static Pages site. For persistent data, the SQLite API should run on a host like Render, Railway, or your own VPS instead of GitHub Pages.
 
-## 🗄️ SQLite
+## 🗄️ SQLite / firestore firebase
+
 
 The project now includes a local SQLite database in `data/novacommerce.db` and a lightweight API at `server/index.js`.
 
